@@ -3,6 +3,11 @@
 A Discord bot that monitors Roblox client versions and sends notifications when new updates are detected.
 The bot monitors Roblox client version channels, detects future releases through ZBeta.
 
+## Add to your server
+
+If you do not want to host your own instance of the bot, you can use the one hosted and managed by me! The bot should have 100% uptime so don't worry.
+-> [Authorization Link](https://discord.com/oauth2/authorize?client_id=1526290601476231218)
+
 ## Features
 
 - Monitors Roblox client version channels
@@ -95,6 +100,10 @@ Run in development mode:
 npm run dev
 ```
 
+### Note
+
+Pull requests and issues should be created on git.imtheo.lol, not GitHub.
+
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
