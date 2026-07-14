@@ -6,6 +6,7 @@ The bot monitors Roblox client version channels, detects future releases through
 ## Add to your server
 
 If you do not want to host your own instance of the bot, you can use the one hosted and managed by me! The bot should have 100% uptime so don't worry.
+
 -> [Authorization Link](https://discord.com/oauth2/authorize?client_id=1526290601476231218)
 
 ## Features
