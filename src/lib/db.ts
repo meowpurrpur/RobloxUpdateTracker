@@ -17,6 +17,15 @@ CREATE TABLE IF NOT EXISTS alerts (
     PRIMARY KEY (channelId, robloxChannel)
 );
 
+CREATE TABLE IF NOT EXISTS dmAlerts (
+    userId TEXT NOT NULL,
+    robloxChannel TEXT NOT NULL,
+    customContent TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT 1,
+
+    PRIMARY KEY (userId, robloxChannel)
+);
+
 CREATE TABLE IF NOT EXISTS knownVersions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hash TEXT NOT NULL,
