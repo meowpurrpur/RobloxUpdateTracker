@@ -164,7 +164,7 @@ async function sendComponentAlert(
         components,
       });
     } catch (e) {
-      console.log(`Failed to send alert to ${channel}, error: ${e}`);
+      console.log(`Failed to send alert to ${alert.channelId}, error: ${e}`);
     }
   }
 }
