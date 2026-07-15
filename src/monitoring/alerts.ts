@@ -155,7 +155,9 @@ async function sendComponentAlert(
         flags: MessageFlags.IsComponentsV2,
         components,
       });
-    } catch {}
+    } catch (e) {
+      console.log(`Failed to send alert to ${channel}, error: ${e}`);
+    }
   }
 }
 
