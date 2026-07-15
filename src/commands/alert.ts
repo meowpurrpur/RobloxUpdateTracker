@@ -75,6 +75,37 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.getString("channel", true);
     const message = interaction.options.getString("message") ?? "";
 
+    const botMember = interaction.guild?.members.me;
+    if (!botMember) {
+      return interaction.reply({
+        content: "Failed to get permissions in this channel.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    const guildChannel = interaction.guild.channels.cache.get(
+      interaction.channelId,
+    );
+
+    if (!guildChannel || !guildChannel.isTextBased()) {
+      return interaction.reply({
+        content: "Only text channels can get alerts.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    const permissions = guildChannel.permissionsFor(botMember);
+    if (
+      !permissions?.has(PermissionFlagsBits.ViewChannel) ||
+      !permissions?.has(PermissionFlagsBits.SendMessages)
+    ) {
+      return interaction.reply({
+        content:
+          "The bot is missing the **View Channel** and **Send Messages** permissions in this channel, permissions must be given before alerts are enabled.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     db.prepare(
       `
       INSERT INTO alerts (
