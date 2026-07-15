@@ -56,14 +56,16 @@ function getAlerts(channel: string) {
 }
 
 async function sendAlert(alert: Alert, payload: MessageCreateOptions) {
-  const message = {
-    content: alert.customContent,
-    ...payload,
-  };
-
   if (alert.type === "dm") {
     const user = await client.users.fetch(alert.userId!);
-    await user.send(message);
+
+    if (alert.customContent.trim()) {
+      await user.send({
+        content: alert.customContent,
+      });
+    }
+
+    await user.send(payload);
     return;
   }
 
@@ -72,7 +74,13 @@ async function sendAlert(alert: Alert, payload: MessageCreateOptions) {
     return;
   }
 
-  await channel.send(message);
+  if (alert.customContent.trim()) {
+    await channel.send({
+      content: alert.customContent,
+    });
+  }
+
+  await channel.send(payload);
 }
 
 function createText(content: string) {
