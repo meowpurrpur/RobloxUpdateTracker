@@ -73,7 +73,6 @@ async function checkChannel(channel: RobloxChannel) {
   } | undefined;
 
   const versionExists = hasVersion(hash, channel);
-
   if (channel !== "ZBeta" && currentState && currentState.currentVersion !== hash) {
     if (versionExists) {
       console.log(

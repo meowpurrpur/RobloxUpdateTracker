@@ -4,8 +4,13 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder,
+  ContainerBuilder,
+  MessageFlags,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  TextDisplayBuilder,
 } from "discord.js";
+import type { MessageCreateOptions, RGBTuple } from "discord.js";
 import { RDD_BASE } from "../lib/constants";
 
 type Alert = {
@@ -13,6 +18,21 @@ type Alert = {
   userId: string | null;
   customContent: string;
   type: "channel" | "dm";
+};
+
+const emojis = {
+  roblox: "<:roblox:1526968978935779442>",
+  revert: "<:revert:1526970489694585043>",
+  warning: "<:warning:1526970756356116633>",
+  download: "<:download:1526971517823488141>",
+  hash: "<:hash:1526971544465707100>",
+  clock: "<:clock:1526971573586886756>",
+};
+
+const colors = {
+  preUpdate: [75, 173, 234] as RGBTuple,
+  update: [219, 43, 46] as RGBTuple,
+  revert: [229, 115, 22] as RGBTuple,
 };
 
 function getAlerts(channel: string) {
@@ -30,124 +50,145 @@ function getAlerts(channel: string) {
       FROM dmAlerts
       WHERE robloxChannel = ?
       AND enabled = 1
-    `,
+      `,
     )
     .all(channel, channel) as Alert[];
 }
 
-async function sendAlert(
-  alert: Alert,
-  embed: EmbedBuilder,
-  components: ActionRowBuilder<ButtonBuilder>[] = [],
-) {
+async function sendAlert(alert: Alert, payload: MessageCreateOptions) {
+  const message = {
+    content: alert.customContent,
+    ...payload,
+  };
+
   if (alert.type === "dm") {
     const user = await client.users.fetch(alert.userId!);
-    await user.send({
-      content: alert.customContent,
-      embeds: [embed],
-      components,
-    });
-
+    await user.send(message);
     return;
   }
 
-  const discordChannel = await client.channels.fetch(alert.channelId!);
-  if (!discordChannel?.isTextBased() || !discordChannel.isSendable()) {
+  const channel = await client.channels.fetch(alert.channelId!);
+  if (!channel?.isTextBased() || !channel.isSendable()) {
     return;
   }
 
-  await discordChannel.send({
-    content: alert.customContent,
-    embeds: [embed],
-    components,
-  });
+  await channel.send(message);
 }
 
-export async function sendPreUpdate(hash: string, channel: string) {
-  const alerts = getAlerts(channel);
-
-  const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setLabel("Download Version")
-      .setStyle(ButtonStyle.Link)
-      .setEmoji("💠")
-      .setURL(
-        `https://rdd.whatexpsare.online/?channel=${channel}&binaryType=WindowsPlayer&version=${hash}`,
-      ),
-  );
-
-  const embed = new EmbedBuilder()
-    .setTitle("Future Update Detected")
-    .setDescription(
-      `A future Roblox update has been detected on the \`${channel}\` channel.\n
-This does not effect most users but this version should be released onto the \`LIVE\` channel in the next ~24 hours.`,
-    )
-    .setColor("Blue")
-    .addFields(
-      {
-        name: "Version",
-        value: `\`${hash}\``,
-        inline: true,
-      },
-      {
-        name: "Timestamp",
-        value: `<t:${Math.floor(Date.now() / 1000)}:f>`,
-        inline: true,
-      },
-    )
-    .setTimestamp()
-    .setFooter({
-      text: "Roblox Update Tracker",
-    });
-
-  for (const alert of alerts) {
-    try {
-      await sendAlert(alert, embed, [button]);
-    } catch {}
-  }
+function createText(content: string) {
+  return new TextDisplayBuilder().setContent(content);
 }
 
-export async function sendUpdate(hash: string, channel: string) {
-  const alerts = getAlerts(channel);
-
-  const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
+function createDownloadButton(channel: string, hash: string) {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setLabel("Download Version")
+      .setLabel("Download")
       .setStyle(ButtonStyle.Link)
-      .setEmoji("💠")
+      .setEmoji(emojis.download)
       .setURL(
         `${RDD_BASE}/?channel=${channel}&binaryType=WindowsPlayer&version=${hash}`,
       ),
   );
+}
 
-  const embed = new EmbedBuilder()
-    .setTitle("Update Detected")
-    .setDescription(
-      `A new Roblox update has been released and is now available on the \`${channel}\` channel.`,
-    )
-    .setColor("Red")
-    .addFields(
-      {
-        name: "Version",
-        value: `\`${hash}\``,
-        inline: true,
-      },
-      {
-        name: "Timestamp",
-        value: `<t:${Math.floor(Date.now() / 1000)}:f>`,
-        inline: true,
-      },
-    )
-    .setTimestamp()
-    .setFooter({
-      text: "Roblox Update Tracker",
-    });
+function createSeparator() {
+  return new SeparatorBuilder()
+    .setDivider(true)
+    .setSpacing(SeparatorSpacingSize.Small);
+}
 
-  for (const alert of alerts) {
+function createTimestamp() {
+  return `<t:${Math.floor(Date.now() / 1000)}:R>`;
+}
+
+function createVersionInfo(hash: string) {
+  return createText(
+    [
+      `${emojis.hash} **Version**`,
+      `\`${hash}\``,
+      "",
+      `${emojis.clock} **Detected**`,
+      createTimestamp(),
+    ].join("\n"),
+  );
+}
+
+function createRevertInfo(hash: string, previousVersion: string) {
+  return createText(
+    [
+      `${emojis.hash} **Reverted To**`,
+      `\`${hash}\``,
+      "",
+      `${emojis.hash} **Previous Version**`,
+      `\`${previousVersion}\``,
+      "",
+      `${emojis.clock} **Detected**`,
+      createTimestamp(),
+    ].join("\n"),
+  );
+}
+
+function createUpdateContainer(
+  title: string,
+  description: string,
+  color: RGBTuple,
+  info: TextDisplayBuilder,
+) {
+  return new ContainerBuilder()
+    .setAccentColor(color)
+    .addTextDisplayComponents(createText(`### ${title}`))
+    .addSeparatorComponents(createSeparator())
+    .addTextDisplayComponents(createText(description))
+    .addSeparatorComponents(createSeparator())
+    .addTextDisplayComponents(info)
+    .addSeparatorComponents(createSeparator())
+    .addTextDisplayComponents(createText("-# Roblox Update Tracker"));
+}
+
+async function sendComponentAlert(
+  channel: string,
+  components: (ContainerBuilder | ActionRowBuilder<ButtonBuilder>)[],
+) {
+  for (const alert of getAlerts(channel)) {
     try {
-      await sendAlert(alert, embed, [button]);
+      await sendAlert(alert, {
+        flags: MessageFlags.IsComponentsV2,
+        components,
+      });
     } catch {}
   }
+}
+
+export async function sendPreUpdate(hash: string, channel: string) {
+  await sendComponentAlert(channel, [
+    createUpdateContainer(
+      `${emojis.warning} Future Update Detected`,
+      [
+        `A future Roblox update has been detected on the \`${channel}\` channel.`,
+        "This version will likely release onto the `LIVE` channel within ~24 hours.",
+      ].join("\n"),
+      colors.preUpdate,
+      createVersionInfo(hash),
+    ),
+    createDownloadButton(channel, hash),
+  ]);
+}
+
+export async function sendUpdate(hash: string, channel: string) {
+  await sendComponentAlert(channel, [
+    createUpdateContainer(
+      `${emojis.roblox} Update Released`,
+      [
+        `A new Roblox update has been released on the \`${channel}\` channel.`,
+        channel === "LIVE"
+          ? "This update will be given to most users."
+          : "This update will not affect most users.",
+      ].join("\n"),
+      colors.update,
+      createVersionInfo(hash),
+    ),
+    createDownloadButton(channel, hash),
+  ]);
 }
 
 export async function sendRevert(
@@ -155,34 +196,12 @@ export async function sendRevert(
   previousVersion: string,
   channel: string,
 ) {
-  const alerts = getAlerts(channel);
-
-  const embed = new EmbedBuilder()
-    .setTitle("Update Reverted")
-    .setDescription(
+  await sendComponentAlert(channel, [
+    createUpdateContainer(
+      `${emojis.revert} Update Reverted`,
       `The \`${channel}\` channel has reverted back to a previous version.`,
-    )
-    .setColor("Purple")
-    .addFields(
-      {
-        name: "Reverted To",
-        value: `\`${hash}\``,
-        inline: true,
-      },
-      {
-        name: "Previous Version",
-        value: `\`${previousVersion}\``,
-        inline: true,
-      },
-    )
-    .setTimestamp()
-    .setFooter({
-      text: "Roblox Update Tracker",
-    });
-
-  for (const alert of alerts) {
-    try {
-      await sendAlert(alert, embed);
-    } catch {}
-  }
+      colors.revert,
+      createRevertInfo(hash, previousVersion),
+    ),
+  ]);
 }
