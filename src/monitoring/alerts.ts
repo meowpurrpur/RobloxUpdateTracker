@@ -55,16 +55,38 @@ function getAlerts(channel: string) {
     .all(channel, channel) as Alert[];
 }
 
-async function sendAlert(alert: Alert, payload: MessageCreateOptions) {
+async function sendAlert(alert: Alert, originalPayload: MessageCreateOptions) {
+  if (!originalPayload?.components)
+    throw new Error("Payload is missing components");
+
+  const originalContainer = originalPayload.components[0] as ContainerBuilder;
+  const container = new ContainerBuilder(originalContainer.toJSON());
+
+  const payload = {
+    ...originalPayload,
+    components: originalPayload.components.map((component) =>
+      component === originalContainer ? container : component,
+    ),
+  };
+
+  const index = container.components.findIndex(
+    (component) =>
+      component instanceof TextDisplayBuilder &&
+      component.data.content === "[CUSTOM CONTENT PLACEHOLDER]",
+  );
+
+  if (index !== -1) {
+    const textDisplay = container.components[index] as TextDisplayBuilder;
+
+    if (!alert.customContent.trim()) {
+      container.spliceComponents(index, 1);
+    } else {
+      textDisplay.setContent(alert.customContent.trim());
+    }
+  }
+
   if (alert.type === "dm") {
     const user = await client.users.fetch(alert.userId!);
-
-    if (alert.customContent.trim()) {
-      await user.send({
-        content: alert.customContent,
-      });
-    }
-
     await user.send(payload);
     return;
   }
@@ -72,12 +94,6 @@ async function sendAlert(alert: Alert, payload: MessageCreateOptions) {
   const channel = await client.channels.fetch(alert.channelId!);
   if (!channel?.isTextBased() || !channel.isSendable()) {
     return;
-  }
-
-  if (alert.customContent.trim()) {
-    await channel.send({
-      content: alert.customContent,
-    });
   }
 
   await channel.send(payload);
@@ -145,7 +161,7 @@ function createUpdateContainer(
   return new ContainerBuilder()
     .setAccentColor(color)
     .addTextDisplayComponents(createText(`### ${title}`))
-    .addSeparatorComponents(createSeparator())
+    .addTextDisplayComponents(createText("[CUSTOM CONTENT PLACEHOLDER]"))
     .addTextDisplayComponents(createText(description))
     .addSeparatorComponents(createSeparator())
     .addTextDisplayComponents(info)
