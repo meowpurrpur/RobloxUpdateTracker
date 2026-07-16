@@ -13,11 +13,16 @@ export async function loadEvents(): Promise<Event[]> {
   return Promise.all(
     fs
       .readdirSync(eventsPath)
-      .filter((file) => file.endsWith(".ts") && file !== "index.ts")
+      .filter(
+        (file) =>
+          (file.endsWith(".ts") || file.endsWith(".js")) &&
+          file !== "index.ts" &&
+          file !== "index.js",
+      )
       .map(async (file) => {
         const event = await import(path.join(eventsPath, file));
 
-        return event as Event;
+        return event.default ?? event;
       }),
   );
 }
