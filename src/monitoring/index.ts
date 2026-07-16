@@ -2,9 +2,9 @@ import fetch from "node-fetch";
 import db from "../lib/db";
 import {
   ROBLOX_CHANNELS,
-  CLIENTSETTINGS_BASE,
   RobloxChannel,
 } from "../lib/constants";
+import CLIENTSETTINGS_BASE from "../lib/config";
 import { sendUpdate, sendPreUpdate, sendRevert } from "./alerts";
 
 function getChannelUrl(channel: RobloxChannel) {

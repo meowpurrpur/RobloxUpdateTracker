@@ -3,7 +3,8 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
-import { CLIENTSETTINGS_BASE, ROBLOX_CHANNELS } from "../lib/constants";
+import { ROBLOX_CHANNELS } from "../lib/constants";
+import CLIENTSETTINGS_BASE from "../lib/config";
 
 export const data = new SlashCommandBuilder()
   .setName("current-version")
