@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "register-commands": "tsx src/lib/register-commands.ts"
+    "register-commands": "tsx src/lib/registerCommands.ts"
   },
   "keywords": [],
   "type": "commonjs",

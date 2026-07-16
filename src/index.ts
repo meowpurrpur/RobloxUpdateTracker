@@ -1,22 +1,25 @@
 import { client } from "./lib/client";
 import config from "./lib/config";
-import { startMonitoring } from "./monitoring";
-import { commands } from "./commands";
+import { loadCommands } from "./commands";
+import { loadEvents } from "./events";
 
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) {
-    return;
+async function start() {
+  const commands = await loadCommands();
+
+  for (const [name, command] of Object.entries(commands)) {
+    client.commands.set(name, command);
   }
 
-  const command = commands[interaction.commandName as keyof typeof commands];
-  if (command) {
-    await command.execute(interaction);
+  const events = await loadEvents();
+  for (const event of events) {
+    if (event.once) {
+      client.once(event.name, (...args) => event.execute(...args));
+    } else {
+      client.on(event.name, (...args) => event.execute(...args));
+    }
   }
-});
 
-client.once("clientReady", () => {
-  console.log("Logged into Discord bot!");
-  startMonitoring();
-});
+  await client.login(config.DISCORD_BOT_TOKEN);
+}
 
-client.login(config.DISCORD_BOT_TOKEN);
+start();
