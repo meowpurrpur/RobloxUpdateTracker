@@ -4,7 +4,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { ROBLOX_CHANNELS } from "../lib/constants";
-import CLIENTSETTINGS_BASE from "../lib/config";
+import config from "../lib/config";
 
 export const data = new SlashCommandBuilder()
   .setName("current-version")
@@ -26,7 +26,7 @@ export const data = new SlashCommandBuilder()
 
 async function getVersion(channel: string): Promise<string | null> {
   const response = await fetch(
-    `${CLIENTSETTINGS_BASE}/v2/client-version/WindowsPlayer/channel/${channel}`,
+    `${config.CLIENTSETTINGS_BASE}/v2/client-version/WindowsPlayer/channel/${channel}`,
   );
   if (!response.ok) return null;
 

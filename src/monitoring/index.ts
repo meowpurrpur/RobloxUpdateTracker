@@ -4,11 +4,11 @@ import {
   ROBLOX_CHANNELS,
   RobloxChannel,
 } from "../lib/constants";
-import CLIENTSETTINGS_BASE from "../lib/config";
+import config from "../lib/config";
 import { sendUpdate, sendPreUpdate, sendRevert } from "./alerts";
 
 function getChannelUrl(channel: RobloxChannel) {
-  return `${CLIENTSETTINGS_BASE}/v2/client-version/WindowsPlayer/channel/${channel}`;
+  return `${config.CLIENTSETTINGS_BASE}/v2/client-version/WindowsPlayer/channel/${channel}`;
 }
 
 function hasVersion(hash: string, channel: string) {
