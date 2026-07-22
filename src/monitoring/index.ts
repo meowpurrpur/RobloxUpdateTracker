@@ -1,9 +1,6 @@
 import fetch from "node-fetch";
 import db from "../lib/db";
-import {
-  ROBLOX_CHANNELS,
-  RobloxChannel,
-} from "../lib/constants";
+import { ROBLOX_CHANNELS, RobloxChannel } from "../lib/constants";
 import config from "../lib/config";
 import { sendUpdate, sendPreUpdate, sendRevert } from "./alerts";
 
@@ -47,74 +44,88 @@ function markReleased(hash: string) {
   ).run(hash);
 }
 
+function updateChannelState(channel: RobloxChannel, hash: string) {
+  db.prepare(
+    `
+      INSERT INTO channelState (
+        robloxChannel,
+        currentVersion,
+        previousVersion
+      )
+      VALUES (?, ?, NULL)
+      ON CONFLICT(robloxChannel)
+      DO UPDATE SET
+        previousVersion = channelState.currentVersion,
+        currentVersion = excluded.currentVersion
+    `,
+  ).run(channel, hash);
+}
+
 async function checkChannel(channel: RobloxChannel) {
   const response = await fetch(getChannelUrl(channel));
-  if(!response.ok) return;
-  
+  if (!response.ok) return;
+
   const data = (await response.json()) as {
     clientVersionUpload?: string;
   };
 
   const hash = data.clientVersionUpload;
-  if (!hash) {
-    return;
-  }
+  if (!hash) return;
 
   const currentState = db
     .prepare(
       `
-        SELECT currentVersion
+        SELECT currentVersion, previousVersion
         FROM channelState
         WHERE robloxChannel = ?
       `,
     )
-    .get(channel) as {
-    currentVersion: string;
-  } | undefined;
+    .get(channel) as
+    | {
+        currentVersion: string;
+        previousVersion: string | null;
+      }
+    | undefined;
 
   const versionExists = hasVersion(hash, channel);
-  if (channel !== "ZBeta" && currentState && currentState.currentVersion !== hash) {
-    if (versionExists) {
+
+  if (currentState && currentState.currentVersion === hash) {
+    return;
+  }
+
+  if (channel !== "ZBeta" && currentState) {
+    const isRevert = currentState.previousVersion === hash;
+
+    if (isRevert) {
       console.log(
         `${channel} version reverted: ${currentState.currentVersion} -> ${hash}`,
       );
 
       await sendRevert(hash, currentState.currentVersion, channel);
     } else {
-      console.log(
-        `New ${channel} version: ${hash}`,
-      );
+      console.log(`New ${channel} version: ${hash}`);
 
-      addVersion(hash, channel);
       await sendUpdate(hash, channel);
     }
 
-    db.prepare(
-      `
-        INSERT INTO channelState (
-          robloxChannel,
-          currentVersion
-        )
-        VALUES (?, ?)
-        ON CONFLICT(robloxChannel)
-        DO UPDATE SET currentVersion = excluded.currentVersion
-      `,
-    ).run(channel, hash);
+    if (!versionExists) {
+      addVersion(hash, channel);
+    }
 
+    updateChannelState(channel, hash);
     return;
   }
 
   if (!versionExists) {
     console.log(`New ${channel} version: ${hash}`);
+
     addVersion(hash, channel);
 
     if (channel === "ZBeta") {
       await sendPreUpdate(hash, channel);
     } else {
       await sendUpdate(hash, channel);
-    }
 
-    if (channel !== "ZBeta") {
       const betaVersion = db
         .prepare(
           `
@@ -133,17 +144,7 @@ async function checkChannel(channel: RobloxChannel) {
     }
   }
 
-  db.prepare(
-    `
-      INSERT INTO channelState (
-        robloxChannel,
-        currentVersion
-      )
-      VALUES (?, ?)
-      ON CONFLICT(robloxChannel)
-      DO UPDATE SET currentVersion = excluded.currentVersion
-    `,
-  ).run(channel, hash);
+  updateChannelState(channel, hash);
 }
 
 export async function startMonitoring() {

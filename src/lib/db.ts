@@ -37,11 +37,33 @@ CREATE TABLE IF NOT EXISTS knownVersions (
 
 CREATE TABLE IF NOT EXISTS channelState (
     robloxChannel TEXT PRIMARY KEY,
-    currentVersion TEXT NOT NULL
+    currentVersion TEXT NOT NULL,
+    previousVersion TEXT
 );
+
 
 CREATE INDEX IF NOT EXISTS idx_knownVersions_robloxChannel
 ON knownVersions (robloxChannel);
 `);
+
+// migration
+const exists = db
+  .prepare(
+    `
+    SELECT 1
+    FROM pragma_table_info('channelState')
+    WHERE name = 'previousVersion'
+`,
+  )
+  .get();
+
+if (!exists) {
+  db.exec(`
+        ALTER TABLE channelState
+        ADD COLUMN previousVersion TEXT;
+    `);
+
+  console.log("Updated channelState table");
+}
 
 export default db;
