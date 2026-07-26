@@ -89,12 +89,30 @@ async function checkChannel(channel: RobloxChannel) {
 
   const versionExists = hasVersion(hash, channel);
 
+  console.log({
+    channel,
+    current: currentState?.currentVersion,
+    previous: currentState?.previousVersion,
+    hash,
+    same: currentState?.currentVersion === hash,
+    versionExists: !!versionExists,
+  });
+
   if (currentState && currentState.currentVersion === hash) {
     return;
   }
 
   if (channel !== "ZBeta" && currentState) {
+    if (currentState.currentVersion === hash) {
+      return;
+    }
+
     const isRevert = currentState.previousVersion === hash;
+    updateChannelState(channel, hash);
+
+    if (versionExists && !isRevert) {
+      return;
+    }
 
     if (isRevert) {
       console.log(
@@ -104,7 +122,6 @@ async function checkChannel(channel: RobloxChannel) {
       await sendRevert(hash, currentState.currentVersion, channel);
     } else {
       console.log(`New ${channel} version: ${hash}`);
-
       await sendUpdate(hash, channel);
     }
 
@@ -112,13 +129,11 @@ async function checkChannel(channel: RobloxChannel) {
       addVersion(hash, channel);
     }
 
-    updateChannelState(channel, hash);
     return;
   }
 
   if (!versionExists) {
     console.log(`New ${channel} version: ${hash}`);
-
     addVersion(hash, channel);
 
     if (channel === "ZBeta") {
@@ -147,7 +162,14 @@ async function checkChannel(channel: RobloxChannel) {
   updateChannelState(channel, hash);
 }
 
+let monitoring = false;
 export async function startMonitoring() {
+  if (monitoring) {
+    console.log("Update monitoring already running.");
+    return;
+  }
+
+  monitoring = true;
   console.log("Update monitoring running.");
 
   async function check() {
@@ -160,6 +182,8 @@ export async function startMonitoring() {
     }
   }
 
-  await check();
-  setInterval(check, 10000);
+  while (monitoring) {
+    await check();
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+  }
 }
